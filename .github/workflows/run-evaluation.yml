@@ -1,0 +1,55 @@
+name: Run Repository Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: 'Repository to evaluate (e.g., Molly-agi/Molly-Core)'
+        required: true
+        default: 'Molly-agi/Molly-Core'
+      output_format:
+        description: 'Output format'
+        required: true
+        default: 'human'
+        type: choice
+        options:
+          - human
+          - json
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout lazarus-repo-eval-kit
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create .env file
+        run: |
+          echo "LLM_PROVIDER=${{ secrets.LLM_PROVIDER }}" >> .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" >> .env
+          echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> .env
+
+      - name: Run evaluation (human readable)
+        if: ${{ github.event.inputs.output_format == 'human' }}
+        run: |
+          python repo_evaluator.py ${{ github.event.inputs.repository }} --token ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run evaluation (JSON)
+        if: ${{ github.event.inputs.output_format == 'json' }}
+        run: |
+          python repo_evaluator.py ${{ github.event.inputs.repository }} --token ${{ secrets.GITHUB_TOKEN }} --json
